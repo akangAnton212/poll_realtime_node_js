@@ -3,6 +3,8 @@ const router = express.Router();
 const Pusher = require('pusher');
 const mongoose = require("mongoose");
 
+const Vote = require("../models/vote");
+
 var channels_client = new Pusher({
     appId: '875321',
     key: '8d2f69dae3beb59bcf5f',
@@ -12,19 +14,32 @@ var channels_client = new Pusher({
   });
 
 router.get("/",  (req, res) => {
-    res.send("AWEEE");
+    Vote.find().then(rest => {
+        res.json({
+            success: true,
+            votes: rest
+        });
+    }).catch(err => console.log(err));
 });
 
 router.post("/", (req, res) => {
-    channels_client.trigger('os-poll', 'os-vote', {
-        points: 1,
-        os: req.body.os
-    });
 
-    return res.json({
-        success: true,
-        message: "Makasih gan udah voting"
-    });
+    const newVote = {
+        os:req.body.os,
+        points: 1
+    }
+
+    new Vote(newVote).save().then(e => {
+        channels_client.trigger('os-poll', 'os-vote', {
+            points: parseInt(e.points),
+            os: e.os
+        });
+    
+        return res.json({
+            success: true,
+            message: "Makasih gan udah voting"
+        });
+    }).catch(err => console.log(err));
 });
 
 module.exports = router;
